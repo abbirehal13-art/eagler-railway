@@ -7,6 +7,7 @@ HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "8000"))
 
 TOKEN = os.environ.get("TUNNEL_TOKEN")
+
 if not TOKEN:
 raise RuntimeError("TUNNEL_TOKEN is not set")
 
@@ -18,7 +19,10 @@ async def send_tunnel(message):
 async with tunnel_lock:
 if tunnel is None:
 raise ConnectionError("No tunnel agent connected")
-await tunnel.send(message)
+
+```
+    await tunnel.send(message)
+```
 
 async def tunnel_agent(ws, first_message):
 global tunnel
@@ -43,6 +47,7 @@ print("TUNNEL AGENT CONNECTED")
 
 try:
     async for message in ws:
+
         if not isinstance(message, str):
             continue
 
@@ -79,6 +84,8 @@ try:
                     await client.close()
                 except Exception:
                     pass
+
+            print("Minecraft connection closed:", cid)
 
 except websockets.exceptions.ConnectionClosed as e:
     print("Tunnel closed:", e.code, repr(e.reason))
