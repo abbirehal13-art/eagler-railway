@@ -132,17 +132,17 @@ async def handle(ws):
         print("Connection handler error:", repr(e))
 
 
-def process_request(connection, request):
+async def process_request(connection, request):
     if request.path == "/health":
         return Response(
+            "HTTP/1.1",
             200,
             "OK",
-            [("Content-Type", "text/plain")],
+            {"Content-Type": "text/plain"},
             b"OK",
         )
 
     return None
-
 
 async def main():
     print("Starting Minecraft relay")
