@@ -7,18 +7,23 @@ HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "8000"))
 
 TOKEN = os.environ.get("TUNNEL_TOKEN")
-if not TOKEN: raise RuntimeError("TUNNEL_TOKEN is not set")
+
+if not TOKEN:
+raise RuntimeError("TUNNEL_TOKEN is not set")
+
 tunnel = None
 tunnel_lock = asyncio.Lock()
 connections = {}
 
 async def send_tunnel(message):
 async with tunnel_lock:
-if tunnel is None:
-raise ConnectionError("No tunnel agent connected")
+current_tunnel = tunnel
 
 ```
-    await tunnel.send(message)
+if current_tunnel is None:
+    raise ConnectionError("No tunnel agent connected")
+
+await current_tunnel.send(message)
 ```
 
 async def tunnel_agent(ws, first_message):
@@ -26,17 +31,17 @@ global tunnel
 
 ```
 if first_message != "AUTH:" + TOKEN:
-    print("Rejected tunnel agent")
+    print("Rejected tunnel agent: invalid token")
     await ws.close(code=1008, reason="Invalid token")
     return
 
 async with tunnel_lock:
-    old = tunnel
+    old_tunnel = tunnel
     tunnel = ws
 
-if old is not None and old is not ws:
+if old_tunnel is not None and old_tunnel is not ws:
     try:
-        await old.close()
+        await old_tunnel.close()
     except Exception:
         pass
 
@@ -52,6 +57,7 @@ try:
             parts = message.split(":", 2)
 
             if len(parts) != 3:
+                print("Invalid DATA message")
                 continue
 
             cid = parts[1]
@@ -60,7 +66,7 @@ try:
             try:
                 data = bytes.fromhex(data_hex)
             except ValueError:
-                print("Invalid DATA:", cid)
+                print("Invalid DATA hex:", cid)
                 continue
 
             client = connections.get(cid)
@@ -68,8 +74,12 @@ try:
             if client is not None:
                 try:
                     await client.send(data)
-                except Exception as e:
-                    print("Client send error:", repr(e))
+                except Exception as error:
+                    print(
+                        "Client send error:",
+                        cid,
+                        repr(error)
+                    )
 
         elif message.startswith("CLOSE:"):
             cid = message[6:]
@@ -84,11 +94,15 @@ try:
 
             print("Minecraft connection closed:", cid)
 
-except websockets.exceptions.ConnectionClosed as e:
-    print("Tunnel closed:", e.code, repr(e.reason))
+except websockets.exceptions.ConnectionClosed as error:
+    print(
+        "Tunnel connection closed:",
+        error.code,
+        repr(error.reason)
+    )
 
-except Exception as e:
-    print("Tunnel error:", repr(e))
+except Exception as error:
+    print("Tunnel error:", repr(error))
 
 finally:
     async with tunnel_lock:
@@ -110,32 +124,56 @@ try:
     await send_tunnel("OPEN:" + cid)
 
     if isinstance(first_message, bytes):
-        await send_tunnel(
-            "DATA:" + cid + ":" + first_message.hex()
+        message = (
+            "DATA:"
+            + cid
+            + ":"
+            + first_message.hex()
         )
 
+        await send_tunnel(message)
+
     elif isinstance(first_message, str):
-        await send_tunnel(
-            "DATA:" + cid + ":" + first_message.encode().hex()
+        message = (
+            "DATA:"
+            + cid
+            + ":"
+            + first_message.encode().hex()
         )
+
+        await send_tunnel(message)
 
     async for message in ws:
 
         if isinstance(message, bytes):
-            await send_tunnel(
-                "DATA:" + cid + ":" + message.hex()
+            tunnel_message = (
+                "DATA:"
+                + cid
+                + ":"
+                + message.hex()
             )
 
+            await send_tunnel(tunnel_message)
+
         elif isinstance(message, str):
-            await send_tunnel(
-                "DATA:" + cid + ":" + message.encode().hex()
+            tunnel_message = (
+                "DATA:"
+                + cid
+                + ":"
+                + message.encode().hex()
             )
+
+            await send_tunnel(tunnel_message)
 
 except websockets.exceptions.ConnectionClosed:
     pass
 
-except Exception as e:
-    print("Eagler error:", cid, repr(e))
+except Exception as error:
+    print(
+        "Eagler error:",
+        cid,
+        repr(error)
+    )
 
 finally:
     connections.pop(cid, None)
@@ -157,15 +195,25 @@ first_message = await ws.recv()
         isinstance(first_message, str)
         and first_message.startswith("AUTH:")
     ):
-        await tunnel_agent(ws, first_message)
+        await tunnel_agent(
+            ws,
+            first_message
+        )
+
     else:
-        await eagler_client(ws, first_message)
+        await eagler_client(
+            ws,
+            first_message
+        )
 
 except websockets.exceptions.ConnectionClosed:
     pass
 
-except Exception as e:
-    print("Handler error:", repr(e))
+except Exception as error:
+    print(
+        "Handler error:",
+        repr(error)
+    )
 ```
 
 async def main():
@@ -187,9 +235,9 @@ async with websockets.serve(
     close_timeout=10,
 ):
     print("Minecraft relay READY")
+
     await asyncio.Future()
 ```
 
 if **name** == "**main**":
 asyncio.run(main())
-
