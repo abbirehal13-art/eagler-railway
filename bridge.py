@@ -21,7 +21,7 @@ async def send_tunnel(message):
     await current.send(message)
 
 async def tunnel_agent(ws, first):
-global tunnel
+    global tunnel
 
 if first != "AUTH:" + TOKEN:
     print("Rejected tunnel agent")
