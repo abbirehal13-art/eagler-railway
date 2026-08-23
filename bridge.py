@@ -12,13 +12,13 @@ tunnel_lock = asyncio.Lock()
 connections = {}
 
 async def send_tunnel(message):
-async with tunnel_lock:
-current = tunnel
+    async with tunnel_lock:
+        current = tunnel
 
-if current is None:
-    raise ConnectionError("No tunnel agent connected")
+    if current is None:
+       raise ConnectionError("No tunnel agent connected")
 
-await current.send(message)
+    await current.send(message)
 
 async def tunnel_agent(ws, first):
 global tunnel
