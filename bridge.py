@@ -92,8 +92,8 @@ finally:
     print("TUNNEL AGENT DISCONNECTED")
 
 async def eagler_client(ws, first):
-cid = str(uuid.uuid4())
-connections[cid] = ws
+    cid = str(uuid.uuid4())
+    connections[cid] = ws
 
 print("Eagler client connected:", cid)
 
