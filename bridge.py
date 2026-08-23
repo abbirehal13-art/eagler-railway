@@ -138,42 +138,42 @@ finally:
     print("Eagler client disconnected:", cid)
 
 async def handle(ws):
-try:
-first = await ws.recv()
+    try:
+        first = await ws.recv()
 
-    if (
-        isinstance(first, str)
-        and first.startswith("AUTH:")
-    ):
-        await tunnel_agent(ws, first)
-    else:
-        await eagler_client(ws, first)
+        if (
+            isinstance(first, str)
+            and first.startswith("AUTH:")
+        ):
+            await tunnel_agent(ws, first)
+        else:
+            await eagler_client(ws, first)
 
-except websockets.exceptions.ConnectionClosed:
-    pass
+    except websockets.exceptions.ConnectionClosed:
+        pass
 
-except Exception as error:
-    print("Handler error:", repr(error))
+    except Exception as error:
+        print("Handler error:", repr(error))
 
 async def main():
-print("================================")
-print("Minecraft relay starting")
-print("Host:", HOST)
-print("Port:", PORT)
-print("WebSocket: /")
-print("================================")
+    print("================================")
+    print("Minecraft relay starting")
+    print("Host:", HOST)
+    print("Port:", PORT)
+    print("WebSocket: /")
+    print("================================")
 
-async with websockets.serve(
-    handle,
-    HOST,
-    PORT,
-    max_size=None,
-    ping_interval=20,
-    ping_timeout=60,
-    close_timeout=10,
-):
-    print("Minecraft relay READY")
-    await asyncio.Future()
+    async with websockets.serve(
+        handle,
+        HOST,
+        PORT,
+        max_size=None,
+        ping_interval=20,
+        ping_timeout=60,
+        close_timeout=10,
+    ):
+        print("Minecraft relay READY")
+        await asyncio.Future()
 
-if **name** == "**main**":
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
