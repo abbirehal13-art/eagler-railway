@@ -35,39 +35,79 @@ async def pipe(source, destination, name):
     try:
         async for message in source:
             await destination.send(message)
+    except websockets.exceptions.ConnectionClosed:
+        print(f"{name}: connection closed")
     except Exception as error:
-        print(f"{name} pipe closed:", repr(error))
+        print(f"{name}: {error!r}")
 
 
 async def handle(client):
     print("Eagler client connected")
 
+    target = None
+    tasks = []
+
     try:
         url, token = await asyncio.to_thread(get_daytona_target)
-
         target_url = url.replace("https://", "wss://", 1)
 
         print("Daytona WebSocket:", target_url)
 
-        async with websockets.connect(
+        target = await websockets.connect(
             target_url,
             additional_headers={
                 "X-Daytona-Preview-Token": token
             },
             max_size=None,
-        ) as target:
+            ping_interval=20,
+            ping_timeout=60,
+            close_timeout=10,
+        )
 
-            print("Connected to Daytona")
+        print("Connected to Daytona")
 
-            await asyncio.gather(
-                pipe(client, target, "Client → Daytona"),
-                pipe(target, client, "Daytona → Client"),
-            )
+        tasks = [
+            asyncio.create_task(
+                pipe(client, target, "Client -> Daytona")
+            ),
+            asyncio.create_task(
+                pipe(target, client, "Daytona -> Client")
+            ),
+        ]
+
+        done, pending = await asyncio.wait(
+            tasks,
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+
+        for task in pending:
+            task.cancel()
+
+        await asyncio.gather(
+            *pending,
+            return_exceptions=True,
+        )
+
+        for task in done:
+            try:
+                await task
+            except Exception as error:
+                print("Relay task error:", repr(error))
 
     except Exception as error:
         print("Bridge error:", repr(error))
 
     finally:
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+
+        if target is not None:
+            try:
+                await target.close()
+            except Exception:
+                pass
+
         print("Eagler client disconnected")
 
 
@@ -79,6 +119,9 @@ async def main():
         HOST,
         PORT,
         max_size=None,
+        ping_interval=20,
+        ping_timeout=60,
+        close_timeout=10,
     ):
         await asyncio.Future()
 
