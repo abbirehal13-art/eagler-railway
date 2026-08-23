@@ -7,10 +7,7 @@ HOST = "0.0.0.0"
 PORT = int(os.environ.get("PORT", "8000"))
 
 TOKEN = os.environ.get("TUNNEL_TOKEN")
-
-if not TOKEN:
-raise RuntimeError("TUNNEL_TOKEN is not set")
-
+if not TOKEN: raise RuntimeError("TUNNEL_TOKEN is not set")
 tunnel = None
 tunnel_lock = asyncio.Lock()
 connections = {}
